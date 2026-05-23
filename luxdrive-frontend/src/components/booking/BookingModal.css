@@ -1,0 +1,77 @@
+.date-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .date-grid { grid-template-columns: 1fr; }
+}
+
+.price-break {
+  background: var(--bg-3);
+  border-radius: var(--r-md);
+  padding: 1.1rem;
+  margin-top: 1rem;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin-bottom: 0.6rem;
+  color: var(--tx-2);
+}
+
+.price-row.total {
+  color: var(--tx-1);
+  font-weight: 700;
+  font-size: 1rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+  margin-bottom: 0;
+}
+
+.price-row .amt { color: var(--gold); }
+
+.promo-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+.promo-row input {
+  flex: 1;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 0.55rem 0.85rem;
+  color: var(--tx-1);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.promo-row input:focus { border-color: var(--gold); outline: none; }
+
+.promo-applied {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--r-md);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.82rem;
+  color: var(--ok);
+  margin-top: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.promo-applied button {
+  background: none;
+  border: none;
+  color: var(--ok);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}

@@ -1,0 +1,48 @@
+# ════════════════════════════════════════════════════════════
+# Root .gitignore — Bütün layihə üçün
+# Həssas məlumatları (şifrələr, JWT açarları) git-ə commit etməyin!
+# ════════════════════════════════════════════════════════════
+
+# Node modules (hər iki layihədə)
+node_modules/
+**/node_modules/
+
+# Environment files (KRİTİK — şifrələri ehtiva edir!)
+.env
+.env.local
+.env.*.local
+**/.env
+**/.env.local
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+
+# Loglar
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Yükləmələr (istifadəçi şəkilləri)
+uploads/
+**/uploads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Vercel
+.vercel/
+
+# Demo (production deployment-ə daxil deyil)
+# Açıqlama: index.html lokal demo versiyasıdır
+# Production yalnız luxdrive-backend + luxdrive-frontend istifadə edir

@@ -1,0 +1,46 @@
+# ════════════════════════════════════════════════════════════
+# Render.com Blueprint — Backend Deployment
+# ════════════════════════════════════════════════════════════
+#
+# Bu fayl Render-ə backend-i avtomatik deploy etməyi öyrədir.
+# Render dashboard-da `New +` → `Blueprint` → bu repo seçilir.
+#
+# Pulsuz plan: 750 saat/ay, 15 dəq passiv qalsa "sleep" olur
+# (ilk sorğu 30 san çəkə bilər)
+
+services:
+  - type: web
+    name: luxdrive-api
+    runtime: node
+    plan: free
+    region: frankfurt  # Avropa region — Neon ilə eyni
+    rootDir: luxdrive-backend
+    buildCommand: npm install
+    startCommand: npm start
+
+    # Sağlamlıq yoxlanışı — Render bu URL-ə müraciət edib statusu yoxlayır
+    healthCheckPath: /health
+
+    # Avtomatik deploy — git push olduqda yenidən qurulur
+    autoDeploy: true
+
+    envVars:
+      # Aşağıdakı dəyişənlər Render dashboard-da əl ilə əlavə edilməlidir:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false  # Dashboard-da yazılacaq (Neon URL)
+      - key: JWT_SECRET
+        generateValue: true  # Render avtomatik təsadüfi yaradır
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: CORS_ORIGINS
+        sync: false  # Vercel URL-i deploy sonrası yazılacaq
+      - key: RATE_LIMIT_MAX
+        value: "100"
+      - key: AUTH_RATE_LIMIT_MAX
+        value: "10"

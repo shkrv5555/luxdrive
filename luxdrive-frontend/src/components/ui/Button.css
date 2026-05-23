@@ -1,0 +1,85 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  border-radius: var(--r-md);
+  border: none;
+  font-weight: 600;
+  font-size: 0.88rem;
+  letter-spacing: 0.2px;
+  transition: all var(--tr-normal);
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 0; height: 0;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.5s ease, height 0.5s ease, opacity 0.5s ease;
+}
+.btn:active::after { width: 200px; height: 200px; opacity: 0; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-loading { cursor: wait; }
+
+/* Variantlar */
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: var(--bg-0);
+  box-shadow: 0 4px 15px var(--gold-glow);
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  box-shadow: 0 6px 25px rgba(212, 175, 55, 0.45);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--gold);
+  border: 1.5px solid var(--border-accent);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--gold-glow);
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.btn-purple {
+  background: linear-gradient(135deg, var(--purple), #5B1FD1);
+  color: #fff;
+  box-shadow: 0 4px 15px var(--purple-glow);
+}
+.btn-purple:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--purple-light), var(--purple));
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--err), #b91c1c);
+  color: #fff;
+}
+.btn-danger:hover:not(:disabled) { transform: translateY(-2px); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--tx-2);
+}
+.btn-ghost:hover:not(:disabled) {
+  color: var(--tx-1);
+  background: var(--bg-3);
+}
+
+/* Ölçülər */
+.btn-sm { padding: 0.4rem 0.9rem; font-size: 0.78rem; }
+.btn-lg { padding: 0.9rem 2rem;   font-size: 1rem;    border-radius: var(--r-lg); }
+
+.btn-full { width: 100%; }
+.btn-icon { display: inline-flex; align-items: center; }

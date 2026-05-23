@@ -1,0 +1,36 @@
+# Bağımlılıqlar
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Mühit dəyişənləri (HEÇ VAXT commit etməyin)
+.env
+.env.local
+.env.*.local
+
+# Yükləmələr
+uploads/
+!uploads/.gitkeep
+
+# Loglar
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Build
+dist/
+build/
