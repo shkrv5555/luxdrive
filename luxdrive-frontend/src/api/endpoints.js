@@ -77,6 +77,8 @@ export const chatAPI = {
   conversations: ()       => client.get('/chat/conversations'),
   messages:      (userId, params) => client.get(`/chat/messages/${userId}`, { params }),
   unreadCount:   ()       => client.get('/chat/unread-count'),
+  // Admin/Dəstək məlumatı və onlayn statusu (chat widget üçün)
+  getSupport:    ()       => client.get('/chat/support'),
 };
 
 // ── FAVORITES ──────────────────────────────────────────────

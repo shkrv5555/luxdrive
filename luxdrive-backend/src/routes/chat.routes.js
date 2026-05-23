@@ -21,6 +21,9 @@ router.get('/conversations', asyncHandler(chatCtrl.listConversations));
 
 router.get('/unread-count', asyncHandler(chatCtrl.unreadCount));
 
+// Dəstək (admin) məlumatı + onlayn statusu
+router.get('/support', asyncHandler(chatCtrl.getSupport));
+
 router.get('/messages/:userId',
   [param('userId').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i), validate],
   asyncHandler(chatCtrl.getMessages)

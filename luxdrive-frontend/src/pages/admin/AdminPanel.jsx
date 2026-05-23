@@ -9,12 +9,14 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { useRef } from 'react';
 import {
   ChartPie, Users, Building2, Car as CarIcon, Calendar, Star,
   Tag, LogOut, Ban, Trash2, ToggleRight, ToggleLeft, Search,
-  FileText, Save,
+  FileText, Save, MessageSquare, Send, Circle,
 } from 'lucide-react';
-import { adminAPI, bookingsAPI, reviewsAPI, carsAPI } from '@api/endpoints.js';
+import { adminAPI, bookingsAPI, reviewsAPI, carsAPI, chatAPI } from '@api/endpoints.js';
+import { getSocket } from '@hooks/useSocket.js';
 import { selectUser, logoutUser } from '@store/slices/authSlice.js';
 import toast from 'react-hot-toast';
 import './AdminPanel.css';
@@ -34,6 +36,7 @@ export default function AdminPanel() {
     { id: 'reviews',   icon: Star,      label: 'Rəylər' },
     { id: 'promos',    icon: Tag,       label: 'Promo kodları' },
     { id: 'pages',     icon: FileText,  label: 'Səhifələr' },
+    { id: 'messages',  icon: MessageSquare, label: 'Mesajlar' },
   ];
 
   return (
@@ -68,6 +71,7 @@ export default function AdminPanel() {
         {section === 'reviews'   && <ReviewsAdminSection />}
         {section === 'promos'    && <PromosSection />}
         {section === 'pages'     && <PagesSection />}
+        {section === 'messages'  && <MessagesSection />}
       </main>
     </div>
   );
@@ -712,6 +716,420 @@ function PagesSection() {
         >
           🔗 Səhifəyə bax (yeni tab)
         </a>
+      </div>
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// ── MESAJLAR — Admin Live Chat (real-vaxt müştəri dəstəyi)
+// ═══════════════════════════════════════════════════════════
+function MessagesSection() {
+  const [conversations, setConversations] = useState([]);
+  const [activeUserId, setActiveUserId]   = useState(null);
+  const [activeUser, setActiveUser]       = useState(null);
+  const [messages, setMessages]           = useState([]);
+  const [input, setInput]                 = useState('');
+  const [isSending, setIsSending]         = useState(false);
+  const bodyRef = useRef(null);
+
+  // ── Söhbətlər siyahısını yüklə ─────────────────────────
+  const loadConversations = () => {
+    chatAPI.conversations()
+      .then(({ data }) => setConversations(data.conversations))
+      .catch((err) => toast.error(err?.message || 'Söhbətlər yüklənmədi'));
+  };
+
+  useEffect(() => {
+    loadConversations();
+    // Hər 15 saniyədə bir yenilə (real-time + polling fallback)
+    const interval = setInterval(loadConversations, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── Aktiv söhbətin mesajlarını yüklə ───────────────────
+  useEffect(() => {
+    if (!activeUserId) {
+      setMessages([]);
+      setActiveUser(null);
+      return;
+    }
+
+    chatAPI.messages(activeUserId, { limit: 100 })
+      .then(({ data }) => {
+        setMessages(data.messages);
+        // Bu istifadəçinin mesajlarını oxundu olaraq işarələ (socket)
+        getSocket()?.emit('chat:read', { senderId: activeUserId });
+      })
+      .catch((err) => toast.error(err?.message || 'Mesajlar yüklənmədi'));
+
+    // İstifadəçi məlumatını siyahıdan tap
+    const conv = conversations.find((c) => c.other_id === activeUserId);
+    if (conv) {
+      setActiveUser({
+        id: activeUserId,
+        name: conv.other_name,
+        avatar: conv.other_avatar,
+        role: conv.other_role,
+        online: conv.other_online,
+      });
+    }
+  }, [activeUserId, conversations]);
+
+  // ── Yeni mesaj gəldikdə real-vaxt yenilə ───────────────
+  useEffect(() => {
+    const handler = (e) => {
+      const msg = e.detail;
+      // Aktiv söhbətə aiddirsə əlavə et
+      if (msg.senderId === activeUserId || msg.receiverId === activeUserId) {
+        setMessages((prev) => [...prev, msg]);
+      }
+      // Söhbətlər siyahısını yenilə
+      loadConversations();
+    };
+    window.addEventListener('chat:message', handler);
+    return () => window.removeEventListener('chat:message', handler);
+  }, [activeUserId]);
+
+  // ── Aşağıya scroll (yeni mesaj gəldikdə) ───────────────
+  useEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // ── Mesaj göndər ───────────────────────────────────────
+  const sendMessage = () => {
+    const text = input.trim();
+    if (!text || !activeUserId) return;
+
+    setIsSending(true);
+    const socket = getSocket();
+    if (!socket) {
+      toast.error('Socket bağlı deyil. Səhifəni yeniləyin.');
+      setIsSending(false);
+      return;
+    }
+
+    socket.emit('chat:send', { receiverId: activeUserId, content: text }, (ack) => {
+      setIsSending(false);
+      if (ack?.error) {
+        toast.error(ack.message || 'Göndərilə bilmədi');
+      } else {
+        setInput('');
+        // Mesajı dərhal göstər (optimistic update artıq event-də edilir)
+      }
+    });
+  };
+
+  // ── Zaman formatla ─────────────────────────────────────
+  const formatTime = (iso) => {
+    const date = new Date(iso);
+    return date.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  return (
+    <>
+      <h2 className="dash-title">
+        <MessageSquare size={22} style={{ verticalAlign: 'middle', color: 'var(--cyan)' }} />
+        {' '}Canlı Mesajlar
+        <span style={{
+          fontSize: '0.75rem',
+          color: 'var(--ok)',
+          marginLeft: '1rem',
+          fontWeight: 600,
+        }}>
+          <Circle size={8} fill="var(--ok)" style={{ verticalAlign: 'middle' }} /> Siz onlayn-sınız
+        </span>
+      </h2>
+      <p style={{ color: 'var(--tx-2)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+        Müştərilərdən gələn mesajları burada cavablandırın. Real-vaxt çatdırılma aktivdir.
+      </p>
+
+      <div className="dash-card" style={{
+        padding: 0,
+        overflow: 'hidden',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(260px, 320px) 1fr',
+        minHeight: '500px',
+        height: '70vh',
+      }}>
+        {/* ── Sol: söhbətlər siyahısı ─────────────────── */}
+        <div style={{
+          borderRight: '1px solid var(--border)',
+          overflowY: 'auto',
+          background: 'var(--bg-1)',
+        }}>
+          <div style={{
+            padding: '1rem',
+            borderBottom: '1px solid var(--border)',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            color: 'var(--tx-2)',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+          }}>
+            Söhbətlər ({conversations.length})
+          </div>
+
+          {conversations.length === 0 ? (
+            <div style={{
+              padding: '3rem 1rem',
+              textAlign: 'center',
+              color: 'var(--tx-3)',
+              fontSize: '0.85rem',
+            }}>
+              <MessageSquare size={32} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
+              <div>Hələ söhbət yoxdur</div>
+              <div style={{ fontSize: '0.75rem', marginTop: '0.3rem' }}>
+                Müştərilərin mesajları burada görünəcək
+              </div>
+            </div>
+          ) : (
+            conversations.map((c) => (
+              <div
+                key={c.other_id}
+                onClick={() => setActiveUserId(c.other_id)}
+                style={{
+                  padding: '0.9rem 1rem',
+                  borderBottom: '1px solid var(--border)',
+                  cursor: 'pointer',
+                  background: activeUserId === c.other_id ? 'var(--bg-3)' : 'transparent',
+                  borderLeft: activeUserId === c.other_id
+                    ? '3px solid var(--gold)'
+                    : '3px solid transparent',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                  {/* Avatar */}
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '50%',
+                    background: 'var(--bg-3)',
+                    border: '2px solid var(--border-accent)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, color: 'var(--gold)', fontSize: '0.85rem',
+                    overflow: 'hidden', position: 'relative', flexShrink: 0,
+                  }}>
+                    {c.other_avatar
+                      ? <img src={c.other_avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : (c.other_name || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}
+                    {/* Onlayn dot */}
+                    {c.other_online && (
+                      <span style={{
+                        position: 'absolute', bottom: 0, right: 0,
+                        width: 10, height: 10, borderRadius: '50%',
+                        background: 'var(--ok)',
+                        border: '2px solid var(--bg-1)',
+                      }} />
+                    )}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      color: 'var(--tx-1)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}>
+                      <span>{c.other_name}</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--tx-3)', fontWeight: 400 }}>
+                        {formatTime(c.created_at)}
+                      </span>
+                    </div>
+                    <div style={{
+                      fontSize: '0.78rem',
+                      color: 'var(--tx-2)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      marginTop: '0.15rem',
+                    }}>
+                      {c.sender_id === c.other_id ? '' : '✓ '}{c.content}
+                    </div>
+                    {/* Oxunmamış sayğacı */}
+                    {parseInt(c.unread_count) > 0 && (
+                      <span style={{
+                        background: 'var(--err)',
+                        color: '#fff',
+                        fontSize: '0.65rem',
+                        fontWeight: 800,
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        marginTop: '0.3rem',
+                        display: 'inline-block',
+                      }}>
+                        {c.unread_count}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* ── Sağ: aktiv söhbət ───────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          {!activeUser ? (
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--tx-3)',
+            }}>
+              <MessageSquare size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+              <div style={{ fontSize: '0.95rem' }}>Söhbət seçin</div>
+              <div style={{ fontSize: '0.78rem', marginTop: '0.3rem' }}>
+                Sol tərəfdən müştəri ilə söhbəti açın
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Başlıq */}
+              <div style={{
+                padding: '1rem 1.2rem',
+                borderBottom: '1px solid var(--border)',
+                background: 'var(--bg-1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: '50%',
+                    background: 'var(--bg-3)',
+                    border: '2px solid var(--border-accent)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, color: 'var(--gold)', fontSize: '0.8rem',
+                    overflow: 'hidden',
+                  }}>
+                    {activeUser.avatar
+                      ? <img src={activeUser.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : (activeUser.name || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{activeUser.name}</div>
+                    <div style={{
+                      fontSize: '0.72rem',
+                      color: activeUser.online ? 'var(--ok)' : 'var(--tx-3)',
+                      display: 'flex', alignItems: 'center', gap: '0.3rem',
+                    }}>
+                      <Circle size={8} fill="currentColor" />
+                      {activeUser.online ? 'Onlayn' : 'Offlayn'} · {activeUser.role}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setActiveUserId(null)}
+                  title="Söhbəti bağla"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Mesajlar */}
+              <div
+                ref={bodyRef}
+                style={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  padding: '1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                  background: 'var(--bg-0)',
+                }}
+              >
+                {messages.length === 0 ? (
+                  <div style={{
+                    textAlign: 'center',
+                    color: 'var(--tx-3)',
+                    padding: '2rem',
+                    fontSize: '0.85rem',
+                  }}>
+                    Hələ mesaj yoxdur. Salamlaşmaq üçün ilk mesajı göndərin!
+                  </div>
+                ) : (
+                  messages.map((m, i) => {
+                    const isMine = m.sender_id !== activeUserId && m.senderId !== activeUserId;
+                    return (
+                      <div
+                        key={m.id || i}
+                        style={{
+                          maxWidth: '75%',
+                          alignSelf: isMine ? 'flex-end' : 'flex-start',
+                          padding: '0.6rem 0.95rem',
+                          background: isMine
+                            ? 'linear-gradient(135deg, var(--gold), var(--gold-dark))'
+                            : 'var(--bg-2)',
+                          color: isMine ? 'var(--bg-0)' : 'var(--tx-1)',
+                          borderRadius: 'var(--r-md)',
+                          borderBottomRightRadius: isMine ? '4px' : 'var(--r-md)',
+                          borderBottomLeftRadius: isMine ? 'var(--r-md)' : '4px',
+                          fontSize: '0.88rem',
+                          lineHeight: 1.4,
+                          fontWeight: isMine ? 500 : 400,
+                          border: !isMine ? '1px solid var(--border)' : 'none',
+                          animation: 'fadeUp 0.25s ease',
+                        }}
+                      >
+                        {m.content}
+                        <div style={{
+                          fontSize: '0.65rem',
+                          opacity: 0.6,
+                          marginTop: '0.25rem',
+                          textAlign: 'right',
+                        }}>
+                          {formatTime(m.created_at || m.createdAt)}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Input */}
+              <div style={{
+                padding: '0.8rem 1rem',
+                borderTop: '1px solid var(--border)',
+                background: 'var(--bg-1)',
+                display: 'flex',
+                gap: '0.6rem',
+                alignItems: 'flex-end',
+              }}>
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  placeholder="Müştəriyə cavab yazın... (Enter göndərmək üçün)"
+                  rows={2}
+                  className="form-control"
+                  style={{ resize: 'none', minHeight: 'auto' }}
+                />
+                <button
+                  className="btn btn-primary"
+                  onClick={sendMessage}
+                  disabled={isSending || !input.trim()}
+                  style={{ height: 'fit-content', padding: '0.8rem 1rem' }}
+                  title="Göndər (Enter)"
+                >
+                  <Send size={16} />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </>
   );

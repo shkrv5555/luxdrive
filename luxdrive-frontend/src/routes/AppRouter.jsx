@@ -6,6 +6,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute.jsx';
+import PageTransition from './PageTransition.jsx';
 
 // Lazy loading — code splitting
 const Home       = lazy(() => import('@pages/Home.jsx'));
@@ -35,36 +36,38 @@ function PageLoader() {
 
 export default function AppRouter() {
   return (
-    <Suspense fallback={<PageLoader />}>
-      <Routes>
-        {/* Public */}
-        <Route path="/"            element={<Home />} />
-        <Route path="/cars"        element={<Cars />} />
-        <Route path="/cars/:id"    element={<CarDetail />} />
-        <Route path="/about"       element={<About />} />
-        <Route path="/contact"     element={<Contact />} />
+    <PageTransition>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public */}
+          <Route path="/"            element={<Home />} />
+          <Route path="/cars"        element={<Cars />} />
+          <Route path="/cars/:id"    element={<CarDetail />} />
+          <Route path="/about"       element={<About />} />
+          <Route path="/contact"     element={<Contact />} />
 
-        {/* Auth */}
-        <Route path="/login"       element={<Login />} />
-        <Route path="/register"    element={<Register />} />
-        <Route path="/admin-login" element={<AdminLogin />} />
+          {/* Auth */}
+          <Route path="/login"       element={<Login />} />
+          <Route path="/register"    element={<Register />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
 
-        {/* Qorunan: müştəri + icarəçi */}
-        <Route path="/dashboard/*" element={
-          <ProtectedRoute roles={['customer', 'renter']}>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
+          {/* Qorunan: müştəri + icarəçi */}
+          <Route path="/dashboard/*" element={
+            <ProtectedRoute roles={['customer', 'renter']}>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
 
-        {/* Qorunan: yalnız admin */}
-        <Route path="/admin/*" element={
-          <ProtectedRoute roles={['admin']}>
-            <AdminPanel />
-          </ProtectedRoute>
-        } />
+          {/* Qorunan: yalnız admin */}
+          <Route path="/admin/*" element={
+            <ProtectedRoute roles={['admin']}>
+              <AdminPanel />
+            </ProtectedRoute>
+          } />
 
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Suspense>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </PageTransition>
   );
 }

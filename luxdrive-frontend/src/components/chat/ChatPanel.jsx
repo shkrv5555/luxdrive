@@ -31,6 +31,8 @@ export default function ChatPanel() {
   const [input, setInput]                   = useState('');
   const [otherTyping, setOtherTyping]       = useState(false);
   const [unreadTotal, setUnreadTotal]       = useState(0);
+  // Dəstək (admin) məlumatı — onlayn statusunu göstərmək üçün
+  const [support, setSupport]               = useState(null);
 
   const bodyRef = useRef(null);
   const typingTimeout = useRef(null);
@@ -41,7 +43,47 @@ export default function ChatPanel() {
     chatAPI.unreadCount()
       .then(({ data }) => setUnreadTotal(data.count))
       .catch(() => {});
+
+    // Dəstək (admin) məlumatını yüklə
+    chatAPI.getSupport()
+      .then(({ data }) => setSupport(data))
+      .catch(() => {});
   }, [isAuth]);
+
+  // Admin online/offline statusunu real-time izlə
+  useEffect(() => {
+    if (!support?.admin) return;
+    const onOnline  = (e) => {
+      if (e.detail.userId === support.admin.id) {
+        setSupport((s) => ({ ...s, online: true }));
+      }
+    };
+    const onOffline = (e) => {
+      if (e.detail.userId === support.admin.id) {
+        setSupport((s) => ({ ...s, online: false }));
+      }
+    };
+    window.addEventListener('user:online',  onOnline);
+    window.addEventListener('user:offline', onOffline);
+    return () => {
+      window.removeEventListener('user:online',  onOnline);
+      window.removeEventListener('user:offline', onOffline);
+    };
+  }, [support?.admin]);
+
+  // Dəstək söhbətini birbaşa aç (admin ilə)
+  const openSupportChat = () => {
+    if (support?.admin) {
+      // Admin obyektini otherUser-a set et ki, header dərhal görünsün
+      setOtherUser({
+        id:     support.admin.id,
+        name:   support.admin.name,
+        avatar: support.admin.avatar_url,
+        online: support.online,
+      });
+      dispatch(openChat(support.admin.id));
+    }
+  };
 
   useEffect(() => {
     if (isOpen && !activeChatUserId) {
@@ -152,6 +194,22 @@ export default function ChatPanel() {
       {!isOpen && (
         <button className="chat-fab" onClick={() => dispatch(openChat())} aria-label="Çat">
           <MessageCircle size={22} />
+          {/* Dəstək onlayn statusu - yaşıl pulse */}
+          {support?.online && unreadTotal === 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: 4, right: 4,
+                width: 12, height: 12,
+                borderRadius: '50%',
+                background: 'var(--ok)',
+                border: '2px solid var(--bg-0)',
+                boxShadow: '0 0 8px var(--ok)',
+                animation: 'pulse 2s infinite',
+              }}
+              title="Dəstək onlayn"
+            />
+          )}
           {unreadTotal > 0 && <span className="chat-fab-dot">{unreadTotal > 9 ? '9+' : unreadTotal}</span>}
         </button>
       )}
@@ -189,10 +247,60 @@ export default function ChatPanel() {
           {/* Söhbətlər siyahısı */}
           {!activeChatUserId ? (
             <div className="chat-conv-list">
-              {conversations.length === 0 ? (
+              {/* Dəstək kartı — həmişə ən üstdə, admin onlayn statusu ilə */}
+              {support?.admin && (
+                <div
+                  className="chat-conv-item chat-support-card"
+                  onClick={openSupportChat}
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(212,175,55,0.08), rgba(124,58,237,0.05))',
+                    borderBottom: '1px solid var(--border-accent)',
+                  }}
+                >
+                  <div className="chat-conv-avatar" style={{
+                    background: 'linear-gradient(135deg, var(--gold), var(--purple))',
+                    color: 'var(--bg-0)',
+                    fontSize: '1.1rem',
+                    fontWeight: 800,
+                  }}>
+                    💬
+                    {/* Onlayn nöqtə — yaşıl pulse */}
+                    <span
+                      className="chat-online-dot"
+                      style={{
+                        background: support.online ? 'var(--ok)' : 'var(--tx-3)',
+                        boxShadow: support.online ? '0 0 0 2px var(--bg-1), 0 0 8px var(--ok)' : '0 0 0 2px var(--bg-1)',
+                        animation: support.online ? 'pulse 2s infinite' : 'none',
+                      }}
+                    />
+                  </div>
+                  <div className="chat-conv-body">
+                    <div className="chat-conv-name" style={{ color: 'var(--gold)', fontWeight: 700 }}>
+                      LuxDrive Dəstək
+                    </div>
+                    <div className="chat-conv-preview" style={{
+                      color: support.online ? 'var(--ok)' : 'var(--tx-3)',
+                      fontWeight: 600,
+                      fontSize: '0.72rem',
+                    }}>
+                      {support.online
+                        ? '● Onlayn — adətən 1 dəqiqədə cavab'
+                        : '○ Hazırda gözləmədə — mesaj qoyun, cavab veriləcək'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {conversations.length === 0 && !support?.admin ? (
                 <div className="chat-empty">
                   <MessageCircle size={36} />
                   <div>Hələ söhbət yoxdur</div>
+                </div>
+              ) : conversations.length === 0 ? (
+                <div className="chat-empty" style={{ padding: '2rem 1rem' }}>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--tx-3)' }}>
+                    Dəstəklə əlaqə üçün yuxarıdakı kartı klikləyin
+                  </div>
                 </div>
               ) : (
                 conversations.map((c) => (

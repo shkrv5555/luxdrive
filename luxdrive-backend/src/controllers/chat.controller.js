@@ -9,6 +9,7 @@
 import * as Chat from '../models/Chat.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { isOnline } from '../config/socket.js';
+import { query } from '../config/database.js';
 
 /**
  * GET /api/chat/conversations
@@ -53,4 +54,29 @@ export async function getMessages(req, res) {
 export async function unreadCount(req, res) {
   const count = await Chat.totalUnread(req.user.id);
   res.json({ count });
+}
+
+/**
+ * GET /api/chat/support
+ * Dəstək (admin) məlumatı + onlayn statusu
+ * Customer chat widget bunu istifadə edərək admin ilə birbaşa söhbət açır
+ */
+export async function getSupport(req, res) {
+  const { rows } = await query(
+    `SELECT id, name, avatar_url FROM users
+     WHERE role = 'admin' AND is_blocked = FALSE
+     ORDER BY created_at ASC LIMIT 1`
+  );
+  const admin = rows[0];
+  if (!admin) {
+    return res.json({ admin: null, online: false });
+  }
+  res.json({
+    admin: {
+      id: admin.id,
+      name: admin.name || 'LuxDrive Dəstək',
+      avatar_url: admin.avatar_url,
+    },
+    online: isOnline(admin.id),
+  });
 }
