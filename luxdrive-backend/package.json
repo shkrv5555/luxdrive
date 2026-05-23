@@ -9,6 +9,9 @@
     "dev": "nodemon server.js",
     "db:init": "psql -d luxdrive -f database/schema.sql",
     "db:migrate": "node database/migrate.js",
+    "db:reseed-passwords": "node database/reseed-passwords.js",
+    "db:setup-local": "node database/setup-local.js",
+    "change-password": "node database/change-password.js",
     "gen:secret": "node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"",
     "test": "jest --runInBand"
   },

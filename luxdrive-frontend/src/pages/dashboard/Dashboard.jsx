@@ -9,11 +9,12 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   User, Calendar, Star, Heart, Car as CarIcon, Inbox,
-  Camera, LogOut, Save, Lock,
+  Camera, LogOut, Save, Lock, Eye, EyeOff,
+  Trash2, AlertTriangle, ShieldCheck,
 } from 'lucide-react';
 import {
   selectUser, selectIsRenter, updateUserProfile,
-  uploadAvatar, logoutUser,
+  uploadAvatar, logoutUser, clearAuth,
 } from '@store/slices/authSlice.js';
 import { fetchFavorites, selectFavorites, toggleFavorite } from '@store/slices/favoritesSlice.js';
 import { bookingsAPI, reviewsAPI, usersAPI, carsAPI } from '@api/endpoints.js';
@@ -108,11 +109,27 @@ export default function Dashboard() {
 // ── PROFİL bölməsi ─────────────────────────────────────────
 function ProfileSection({ user }) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  // Profil sahələri
   const [name, setName]   = useState(user.name);
   const [phone, setPhone] = useState(user.phone || '');
+
+  // Şifrə dəyişmə state-ləri
   const [oldPass, setOldPass]   = useState('');
   const [newPass, setNewPass]   = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [showOld,  setShowOld]  = useState(false);
+  const [showNew,  setShowNew]  = useState(false);
+  const [showConf, setShowConf] = useState(false);
+  const [isChangingPass, setIsChangingPass] = useState(false);
 
+  // Hesab silmə state-ləri
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // ─── Profil yenilə ───────────────────────────────────────
   const saveProfile = () => {
     dispatch(updateUserProfile({ name, phone }))
       .unwrap()
@@ -120,19 +137,63 @@ function ProfileSection({ user }) {
       .catch((err) => toast.error(err?.message || 'Xəta baş verdi'));
   };
 
+  // ─── Şifrə dəyiş (gücləndirilmiş validasiya) ─────────────
   const changePassword = async () => {
-    if (newPass.length < 8) return toast.error('Yeni şifrə min 8 simvol');
+    // Backend qaydaları ilə eyni: min 8, 1 böyük hərf, 1 rəqəm
+    if (!oldPass) return toast.error('Köhnə şifrəni daxil edin');
+    if (newPass.length < 8)        return toast.error('Yeni şifrə ən azı 8 simvol olmalıdır');
+    if (!/[A-Z]/.test(newPass))    return toast.error('Şifrədə ən azı 1 böyük hərf olmalıdır');
+    if (!/[0-9]/.test(newPass))    return toast.error('Şifrədə ən azı 1 rəqəm olmalıdır');
+    if (newPass !== confirmPass)   return toast.error('Şifrələr uyğun gəlmir');
+    if (newPass === oldPass)       return toast.error('Yeni şifrə köhnədən fərqli olmalıdır');
+
+    setIsChangingPass(true);
     try {
       await usersAPI.changePassword({ oldPassword: oldPass, newPassword: newPass });
-      toast.success('Şifrə dəyişdirildi. Digər cihazlardan çıxış edildi.');
-      setOldPass(''); setNewPass('');
+      toast.success('Şifrə uğurla dəyişdirildi! Digər cihazlardan çıxış edildi.');
+      setOldPass(''); setNewPass(''); setConfirmPass('');
     } catch (err) {
       toast.error(err?.message || 'Şifrə dəyişdirilə bilmədi');
+    } finally {
+      setIsChangingPass(false);
     }
   };
 
+  // ─── Hesab sil (2 mərhələli təsdiq) ──────────────────────
+  const deleteAccount = async () => {
+    if (deleteConfirmText !== 'SİL') {
+      return toast.error('Təsdiq üçün böyük hərflərlə "SİL" yazın');
+    }
+    setIsDeleting(true);
+    try {
+      await usersAPI.deleteAccount();
+      toast.success('Hesabınız silindi. Vidalaşırıq! 👋', { duration: 4000 });
+      dispatch(clearAuth());
+      setTimeout(() => navigate('/'), 1500);
+    } catch (err) {
+      toast.error(err?.message || 'Hesab silinə bilmədi');
+      setIsDeleting(false);
+    }
+  };
+
+  // ─── Şifrə gücü göstərici (canlı feedback) ───────────────
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return null;
+    let score = 0;
+    if (pwd.length >= 8)       score++;
+    if (pwd.length >= 12)      score++;
+    if (/[A-Z]/.test(pwd))     score++;
+    if (/[0-9]/.test(pwd))     score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    if (score <= 2) return { label: 'Zəif',   color: 'var(--err)',  width: 33 };
+    if (score <= 3) return { label: 'Orta',   color: 'var(--warn)', width: 66 };
+    return                  { label: 'Güclü', color: 'var(--ok)',   width: 100 };
+  };
+  const strength = getPasswordStrength(newPass);
+
   return (
     <>
+      {/* ═══ ŞƏXSİ MƏLUMATLAR ═══════════════════════════════ */}
       <h2 className="dash-title">Şəxsi Məlumatlar</h2>
       <div className="dash-card">
         <div className="form-grid">
@@ -158,22 +219,227 @@ function ProfileSection({ user }) {
         </button>
       </div>
 
-      {/* Şifrə dəyiş */}
-      <h2 className="dash-title" style={{ marginTop: '2rem' }}>Şifrəni Dəyiş</h2>
+      {/* ═══ ŞİFRƏ DƏYİŞMƏ ══════════════════════════════════ */}
+      <h2 className="dash-title" style={{ marginTop: '2rem' }}>
+        <ShieldCheck size={20} style={{ verticalAlign: 'middle', color: 'var(--purple-light)' }} />
+        {' '}Şifrəni Dəyiş
+      </h2>
       <div className="dash-card">
         <div className="form-grid">
+          {/* Köhnə şifrə */}
           <div className="form-group">
             <label className="form-label">Köhnə şifrə</label>
-            <input className="form-control" type="password" value={oldPass} onChange={(e) => setOldPass(e.target.value)} />
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-control"
+                type={showOld ? 'text' : 'password'}
+                value={oldPass}
+                onChange={(e) => setOldPass(e.target.value)}
+                placeholder="Hazırkı şifrəniz"
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowOld(!showOld)}
+                style={{
+                  position: 'absolute', right: '0.7rem', top: '50%',
+                  transform: 'translateY(-50%)', background: 'none',
+                  border: 'none', color: 'var(--tx-3)', cursor: 'pointer',
+                  padding: '0.3rem', display: 'flex',
+                }}
+                aria-label={showOld ? 'Gizlət' : 'Göstər'}
+              >
+                {showOld ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
+
+          {/* Yeni şifrə */}
           <div className="form-group">
             <label className="form-label">Yeni şifrə</label>
-            <input className="form-control" type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-control"
+                type={showNew ? 'text' : 'password'}
+                value={newPass}
+                onChange={(e) => setNewPass(e.target.value)}
+                placeholder="Min 8 simvol, 1 böyük hərf, 1 rəqəm"
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                style={{
+                  position: 'absolute', right: '0.7rem', top: '50%',
+                  transform: 'translateY(-50%)', background: 'none',
+                  border: 'none', color: 'var(--tx-3)', cursor: 'pointer',
+                  padding: '0.3rem', display: 'flex',
+                }}
+              >
+                {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {/* Şifrə gücü göstəricisi */}
+            {strength && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <div style={{
+                  height: '4px',
+                  background: 'var(--bg-3)',
+                  borderRadius: '2px',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${strength.width}%`,
+                    background: strength.color,
+                    transition: 'all 0.3s ease',
+                  }} />
+                </div>
+                <span style={{
+                  fontSize: '0.72rem',
+                  color: strength.color,
+                  marginTop: '0.25rem',
+                  display: 'inline-block',
+                  fontWeight: 600,
+                }}>
+                  Güc: {strength.label}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Şifrə təkrarı */}
+          <div className="form-group">
+            <label className="form-label">Yeni şifrəni təkrarla</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-control"
+                type={showConf ? 'text' : 'password'}
+                value={confirmPass}
+                onChange={(e) => setConfirmPass(e.target.value)}
+                placeholder="Eyni şifrəni təkrar yazın"
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConf(!showConf)}
+                style={{
+                  position: 'absolute', right: '0.7rem', top: '50%',
+                  transform: 'translateY(-50%)', background: 'none',
+                  border: 'none', color: 'var(--tx-3)', cursor: 'pointer',
+                  padding: '0.3rem', display: 'flex',
+                }}
+              >
+                {showConf ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {confirmPass && newPass !== confirmPass && (
+              <span style={{ fontSize: '0.72rem', color: 'var(--err)', marginTop: '0.25rem', display: 'block' }}>
+                ⚠ Şifrələr uyğun gəlmir
+              </span>
+            )}
           </div>
         </div>
-        <button className="btn btn-purple" onClick={changePassword}>
-          <Lock size={16} /> Şifrəni Dəyiş
+
+        <div style={{
+          background: 'rgba(124, 58, 237, 0.08)',
+          border: '1px solid rgba(124, 58, 237, 0.25)',
+          borderRadius: 'var(--r-md)',
+          padding: '0.7rem 1rem',
+          fontSize: '0.78rem',
+          color: 'var(--tx-2)',
+          marginBottom: '1rem',
+        }}>
+          <ShieldCheck size={14} style={{ verticalAlign: 'middle', color: 'var(--purple-light)' }} />
+          {' '}<strong>Təhlükəsizlik qaydaları:</strong> Min 8 simvol, ən azı 1 böyük hərf, 1 rəqəm.
+          Şifrəni dəyişdikdən sonra bütün cihazlardan avtomatik çıxış ediləcək.
+        </div>
+
+        <button
+          className="btn btn-purple"
+          onClick={changePassword}
+          disabled={isChangingPass}
+        >
+          <Lock size={16} />
+          {isChangingPass ? 'Dəyişdirilir...' : 'Şifrəni Dəyiş'}
         </button>
+      </div>
+
+      {/* ═══ TƏHLÜKƏLİ ZONA — HESAB SİL ════════════════════ */}
+      <h2 className="dash-title" style={{ marginTop: '2rem', color: 'var(--err)' }}>
+        <AlertTriangle size={20} style={{ verticalAlign: 'middle' }} />
+        {' '}Təhlükəli Zona
+      </h2>
+      <div className="dash-card" style={{
+        borderColor: 'rgba(239, 68, 68, 0.3)',
+        background: 'linear-gradient(135deg, rgba(239,68,68,0.04), var(--bg-2))',
+      }}>
+        {!showDeleteConfirm ? (
+          // Mərhələ 1: Açılış sualı
+          <>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--tx-1)' }}>
+              Hesabı sil
+            </h3>
+            <p style={{ color: 'var(--tx-2)', fontSize: '0.88rem', lineHeight: 1.6, marginBottom: '1.2rem' }}>
+              Hesabınızı silsəniz, <strong>geri qaytarılması mümkün deyil</strong>. Bütün məlumatlarınız —
+              {' '}rezervasiyalar, rəylər, favoritlər, və {user.role === 'renter' ? 'avtomobilləriniz' : 'profil məlumatlarınız'} —
+              {' '}<strong style={{ color: 'var(--err)' }}>tamamilə silinəcək</strong>.
+            </p>
+            <button
+              className="btn btn-danger"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 size={16} /> Hesabımı Sil
+            </button>
+          </>
+        ) : (
+          // Mərhələ 2: Təsdiq
+          <>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--err)' }}>
+              <AlertTriangle size={18} style={{ verticalAlign: 'middle' }} /> Əminsiniz?
+            </h3>
+            <p style={{ color: 'var(--tx-2)', fontSize: '0.88rem', lineHeight: 1.6, marginBottom: '1rem' }}>
+              Bu əməliyyat <strong style={{ color: 'var(--err)' }}>GERİ ALINA BİLMƏZ</strong>.
+              Davam etmək üçün aşağıya böyük hərflərlə <strong style={{ color: 'var(--err)' }}>SİL</strong> yazın:
+            </p>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <input
+                className="form-control"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder='Burada "SİL" yazın'
+                style={{
+                  borderColor: deleteConfirmText === 'SİL' ? 'var(--err)' : 'var(--border)',
+                  fontFamily: 'monospace',
+                  fontSize: '0.95rem',
+                  letterSpacing: '2px',
+                  textAlign: 'center',
+                }}
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-danger"
+                onClick={deleteAccount}
+                disabled={deleteConfirmText !== 'SİL' || isDeleting}
+              >
+                <Trash2 size={16} />
+                {isDeleting ? 'Silinir...' : 'Bəli, Hesabımı Sil'}
+              </button>
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmText('');
+                }}
+                disabled={isDeleting}
+              >
+                Ləğv et
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </>
   );
