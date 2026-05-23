@@ -164,17 +164,30 @@ function UsersSection({ role }) {
     return () => clearTimeout(t);
   }, [search, role]);
 
+  // Blok/aç — error handling ilə
   const block = async (u) => {
-    await adminAPI.blockUser(u.id, !u.is_blocked);
-    toast.success(u.is_blocked ? 'Blok açıldı' : 'Bloklandı');
-    load();
+    try {
+      await adminAPI.blockUser(u.id, !u.is_blocked);
+      toast.success(u.is_blocked ? 'Blok açıldı' : 'Bloklandı');
+      load();
+    } catch (err) {
+      // Backend xətasını istifadəçiyə göstər
+      toast.error(err?.message || 'Əməliyyat alınmadı');
+      console.error('Block error:', err);
+    }
   };
 
+  // Sil — error handling ilə
   const remove = async (u) => {
     if (!confirm(`${u.name} silinsin?`)) return;
-    await adminAPI.deleteUser(u.id);
-    toast.success('Silindi');
-    load();
+    try {
+      await adminAPI.deleteUser(u.id);
+      toast.success('İstifadəçi silindi');
+      load();
+    } catch (err) {
+      toast.error(err?.message || 'Silmə alınmadı');
+      console.error('Delete error:', err);
+    }
   };
 
   return (
@@ -263,9 +276,13 @@ function CarsAdminSection() {
 
   const remove = async (c) => {
     if (!confirm(`${c.brand} ${c.model} silinsin?`)) return;
-    await carsAPI.remove(c.id);
-    toast.success('Silindi');
-    load();
+    try {
+      await carsAPI.remove(c.id);
+      toast.success('Avtomobil silindi');
+      load();
+    } catch (err) {
+      toast.error(err?.message || 'Silmə alınmadı');
+    }
   };
 
   return (
@@ -352,9 +369,13 @@ function ReviewsAdminSection() {
 
   const remove = async (id) => {
     if (!confirm('Rəyi silmək istəyirsiniz?')) return;
-    await reviewsAPI.remove(id);
-    toast.success('Silindi');
-    setReviews(reviews.filter((r) => r.id !== id));
+    try {
+      await reviewsAPI.remove(id);
+      toast.success('Rəy silindi');
+      setReviews(reviews.filter((r) => r.id !== id));
+    } catch (err) {
+      toast.error(err?.message || 'Silmə alınmadı');
+    }
   };
 
   return (
