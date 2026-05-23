@@ -1,47 +1,26 @@
 /**
  * PageTransition — Səhifələr arası premium keçid effekti
  *
- * CSS-əsaslı (Framer Motion lazım deyil), light və performant.
- * useLocation hook ilə route dəyişikliyini izləyir, animasiya tətbiq edir.
+ * SADƏLƏŞDİRİLMİŞ VERSİYA: yalnız fade-in animasiyası, key-əsaslı.
+ * Köhnə versiyada fade-out event-i bəzən tutulmurdu və səhifə
+ * `opacity: 0` vəziyyətində qalırdı (boş ekran kimi görünürdü).
  *
- * Effekt: yumşaq fade + yuxarıdan aşağıya slide + qızıl shimmer overlay
+ * İndi: route dəyişəndə React `key` ilə komponent re-mount edir,
+ * yeni səhifə CSS animasiyası ilə içəri gəlir.
  */
-import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import './PageTransition.css';
 
 export default function PageTransition({ children }) {
   const location = useLocation();
-  const [displayLocation, setDisplayLocation] = useState(location);
-  const [stage, setStage] = useState('fadeIn'); // 'fadeIn' | 'fadeOut'
-
-  useEffect(() => {
-    // Yeni route gəldikdə: 1) fade-out → 2) content yenilə → 3) fade-in
-    if (location.pathname !== displayLocation.pathname) {
-      setStage('fadeOut');
-    }
-  }, [location, displayLocation]);
-
-  const handleAnimationEnd = () => {
-    if (stage === 'fadeOut') {
-      // Outgoing animasiya bitdi — yeni content yüklə və fade-in başlat
-      setDisplayLocation(location);
-      setStage('fadeIn');
-      // Səhifəni yuxarıya scroll et
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
+  // key dəyişəndə React komponent ağacını yenidən qurur → animasiya işə düşür
   return (
     <>
-      {/* Premium shimmer overlay - keçid zamanı yuxarı sürüşən qızıl xətt */}
-      <div className={`page-shimmer ${stage === 'fadeOut' ? 'active' : ''}`} />
+      {/* Yuxarıdan qızıl shimmer xətti — hər route dəyişikliyində */}
+      <div key={`shimmer-${location.pathname}`} className="page-shimmer-line" />
 
-      {/* Səhifə məzmunu - fade + slide animasiyası */}
-      <div
-        className={`page-transition ${stage}`}
-        onAnimationEnd={handleAnimationEnd}
-      >
+      {/* Səhifə məzmunu — fade-in + slide-up */}
+      <div key={location.pathname} className="page-fade-in">
         {children}
       </div>
     </>
