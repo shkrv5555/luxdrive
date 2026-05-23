@@ -22,7 +22,7 @@ router.get('/conversations', asyncHandler(chatCtrl.listConversations));
 router.get('/unread-count', asyncHandler(chatCtrl.unreadCount));
 
 router.get('/messages/:userId',
-  [param('userId').isUUID(), validate],
+  [param('userId').matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i), validate],
   asyncHandler(chatCtrl.getMessages)
 );
 

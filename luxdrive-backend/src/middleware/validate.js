@@ -15,8 +15,24 @@
  *     validate
  *   ], loginController);
  */
-import { validationResult } from 'express-validator';
+import { validationResult, param } from 'express-validator';
 import rateLimit from 'express-rate-limit';
+
+// ════════════════════════════════════════════════════════════
+// UUID Format yoxlanışı
+// ════════════════════════════════════════════════════════════
+// Standart `isUUID()` "nil-style" UUID-ləri (00000000-...) qəbul etmir,
+// çünki onların version/variant biti yoxdur. Lakin bizim seed data-da
+// belə UUID-lər var. Bu regex hər iki formatı qəbul edir.
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * UUID param validator — admin/user route-larında istifadə edin
+ *
+ * Misal: router.delete('/users/:id', isUUIDParam('id'), validate, handler)
+ */
+export const isUUIDParam = (name = 'id') =>
+  param(name).matches(UUID_REGEX).withMessage(`Yanlış ${name} formatı`);
 
 /**
  * Validasiya nəticələrini yoxla — uğursuzdursa 400 qaytar

@@ -14,6 +14,9 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
 
+// UUID-like format check (sıfır-UUID-lər də qəbul edir — seed data üçün)
+const UUID_LIKE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Bütün admin route-larını qoru
 router.use(authenticate, requireRole('admin'));
 
@@ -25,7 +28,7 @@ router.get('/users', asyncHandler(adminCtrl.listUsers));
 
 router.put('/users/:id',
   [
-    param('id').isUUID(),
+    param('id').matches(UUID_LIKE).withMessage('Yanlış ID formatı'),
     body('name').optional().trim().isLength({ min: 2, max: 120 }),
     body('phone').optional().matches(/^\+?[0-9\s-]{7,20}$/),
     validate,
@@ -35,7 +38,7 @@ router.put('/users/:id',
 
 router.patch('/users/:id/block',
   [
-    param('id').isUUID(),
+    param('id').matches(UUID_LIKE).withMessage('Yanlış ID formatı'),
     body('blocked').isBoolean(),
     validate,
   ],
@@ -43,7 +46,7 @@ router.patch('/users/:id/block',
 );
 
 router.delete('/users/:id',
-  [param('id').isUUID(), validate],
+  [param('id').matches(UUID_LIKE).withMessage('Yanlış ID formatı'), validate],
   asyncHandler(adminCtrl.deleteUser)
 );
 
@@ -63,12 +66,12 @@ router.post('/promo-codes',
 );
 
 router.patch('/promo-codes/:id/toggle',
-  [param('id').isUUID(), validate],
+  [param('id').matches(UUID_LIKE).withMessage('Yanlış ID formatı'), validate],
   asyncHandler(adminCtrl.togglePromoCode)
 );
 
 router.delete('/promo-codes/:id',
-  [param('id').isUUID(), validate],
+  [param('id').matches(UUID_LIKE).withMessage('Yanlış ID formatı'), validate],
   asyncHandler(adminCtrl.deletePromoCode)
 );
 
