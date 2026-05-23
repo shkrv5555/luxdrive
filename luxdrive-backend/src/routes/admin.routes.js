@@ -8,6 +8,7 @@
 import express from 'express';
 import { body, param } from 'express-validator';
 import * as adminCtrl from '../controllers/admin.controller.js';
+import * as pagesCtrl from '../controllers/pages.controller.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
@@ -73,6 +74,24 @@ router.patch('/promo-codes/:id/toggle',
 router.delete('/promo-codes/:id',
   [param('id').matches(UUID_LIKE).withMessage('Yanlış ID formatı'), validate],
   asyncHandler(adminCtrl.deletePromoCode)
+);
+
+// ── Sayt səhifələri (About, Contact, ...) ─────────────────
+// GET /admin/pages — bütün səhifələrin siyahısı
+router.get('/pages', asyncHandler(pagesCtrl.listPagesAdmin));
+
+// PUT /admin/pages/:slug — səhifə məzmununu yenilə
+router.put('/pages/:slug',
+  [
+    param('slug').isAlphanumeric().isLength({ min: 2, max: 50 }),
+    body('title').trim().isLength({ min: 2, max: 200 })
+      .withMessage('Başlıq 2–200 simvol arasında olmalıdır'),
+    body('content').isLength({ min: 1, max: 50000 })
+      .withMessage('Məzmun boş ola bilməz'),
+    body('meta').optional().isObject(),
+    validate,
+  ],
+  asyncHandler(pagesCtrl.updatePageAdmin)
 );
 
 export default router;

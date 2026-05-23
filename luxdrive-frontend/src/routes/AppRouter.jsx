@@ -11,6 +11,8 @@ import ProtectedRoute from './ProtectedRoute.jsx';
 const Home       = lazy(() => import('@pages/Home.jsx'));
 const Cars       = lazy(() => import('@pages/Cars.jsx'));
 const CarDetail  = lazy(() => import('@pages/CarDetail.jsx'));
+const About      = lazy(() => import('@pages/About.jsx'));
+const Contact    = lazy(() => import('@pages/Contact.jsx'));
 const Login      = lazy(() => import('@pages/auth/Login.jsx'));
 const Register   = lazy(() => import('@pages/auth/Register.jsx'));
 const AdminLogin = lazy(() => import('@pages/auth/AdminLogin.jsx'));
@@ -39,6 +41,8 @@ export default function AppRouter() {
         <Route path="/"            element={<Home />} />
         <Route path="/cars"        element={<Cars />} />
         <Route path="/cars/:id"    element={<CarDetail />} />
+        <Route path="/about"       element={<About />} />
+        <Route path="/contact"     element={<Contact />} />
 
         {/* Auth */}
         <Route path="/login"       element={<Login />} />

@@ -36,6 +36,7 @@ import adminRoutes         from './src/routes/admin.routes.js';
 import notificationsRoutes from './src/routes/notifications.routes.js';
 import chatRoutes          from './src/routes/chat.routes.js';
 import favoritesRoutes     from './src/routes/favorites.routes.js';
+import pagesRoutes         from './src/routes/pages.routes.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { generalLimiter } from './src/middleware/validate.js';
 
@@ -134,6 +135,7 @@ app.use('/api/admin',         adminRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/chat',          chatRoutes);
 app.use('/api/favorites',     favoritesRoutes);
+app.use('/api/pages',         pagesRoutes);
 
 // ── 6. 404 və error handler-lər (sonda olmalıdır) ─────────
 app.use(notFoundHandler);

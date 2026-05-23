@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ChartPie, Users, Building2, Car as CarIcon, Calendar, Star,
   Tag, LogOut, Ban, Trash2, ToggleRight, ToggleLeft, Search,
+  FileText, Save,
 } from 'lucide-react';
 import { adminAPI, bookingsAPI, reviewsAPI, carsAPI } from '@api/endpoints.js';
 import { selectUser, logoutUser } from '@store/slices/authSlice.js';
@@ -32,6 +33,7 @@ export default function AdminPanel() {
     { id: 'bookings',  icon: Calendar,  label: 'Rezervasiyalar' },
     { id: 'reviews',   icon: Star,      label: 'Rəylər' },
     { id: 'promos',    icon: Tag,       label: 'Promo kodları' },
+    { id: 'pages',     icon: FileText,  label: 'Səhifələr' },
   ];
 
   return (
@@ -65,6 +67,7 @@ export default function AdminPanel() {
         {section === 'bookings'  && <BookingsAdminSection />}
         {section === 'reviews'   && <ReviewsAdminSection />}
         {section === 'promos'    && <PromosSection />}
+        {section === 'pages'     && <PagesSection />}
       </main>
     </div>
   );
@@ -495,6 +498,220 @@ function PromosSection() {
             ))}
           </tbody>
         </table>
+      </div>
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// ── SƏHİFƏLƏR (About, Contact) — Admin redaktə bölməsi
+// ═══════════════════════════════════════════════════════════
+function PagesSection() {
+  const [pages, setPages]       = useState([]);
+  const [activeSlug, setActiveSlug] = useState('about');
+  const [title, setTitle]       = useState('');
+  const [content, setContent]   = useState('');
+  const [metaJson, setMetaJson] = useState('{}');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving]   = useState(false);
+
+  // İlk yükləmədə bütün səhifələri al
+  const loadPages = () => {
+    setIsLoading(true);
+    adminAPI.listPages()
+      .then(({ data }) => {
+        setPages(data.pages);
+        // Aktiv slug-un məlumatlarını formaya yüklə
+        const current = data.pages.find((p) => p.slug === activeSlug);
+        if (current) {
+          setTitle(current.title);
+          setContent(current.content);
+          setMetaJson(JSON.stringify(current.meta || {}, null, 2));
+        }
+      })
+      .catch((err) => toast.error(err?.message || 'Səhifələr yüklənmədi'))
+      .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => { loadPages(); }, []);
+
+  // Slug dəyişəndə formanı yenilə
+  const selectPage = (slug) => {
+    const p = pages.find((x) => x.slug === slug);
+    if (p) {
+      setActiveSlug(slug);
+      setTitle(p.title);
+      setContent(p.content);
+      setMetaJson(JSON.stringify(p.meta || {}, null, 2));
+    }
+  };
+
+  // Saxla
+  const save = async () => {
+    // JSON-u parse et — yanlış formatda olarsa xəta ver
+    let meta;
+    try {
+      meta = JSON.parse(metaJson);
+    } catch {
+      return toast.error('Meta JSON formatı yanlışdır');
+    }
+    if (!title.trim()) return toast.error('Başlıq boş ola bilməz');
+    if (!content.trim()) return toast.error('Məzmun boş ola bilməz');
+
+    setIsSaving(true);
+    try {
+      await adminAPI.updatePage(activeSlug, { title, content, meta });
+      toast.success(`"${activeSlug}" səhifəsi yeniləndi!`);
+      loadPages(); // Yenidən yüklə
+    } catch (err) {
+      toast.error(err?.message || 'Yenilənmə alınmadı');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Slug üçün dostsanə ad
+  const SLUG_LABELS = {
+    about:   'Haqqımızda',
+    contact: 'Əlaqə',
+    privacy: 'Məxfilik',
+    terms:   'Şərtlər',
+  };
+
+  // Meta JSON üçün nümunə kömək mətni
+  const META_HINTS = {
+    contact: 'Misal:\n{\n  "phone": "+994 50 000 00 00",\n  "email": "info@luxdrive.az",\n  "address": "Bakı, Azərbaycan",\n  "working_hours": "Hər gün 09:00 — 22:00",\n  "instagram": "luxdrive.az",\n  "facebook": "luxdrive.az"\n}',
+    about:   'Misal:\n{\n  "texts": {\n    "badge": "2022-dən bəri",\n    "hero_prefix": "Lüks Sürüş",\n    "hero_accent": "Hekayəmiz",\n    "subtitle": "Premium platforma...",\n    "mission_text": "...",\n    "vision_text": "..."\n  },\n  "established": 2022,\n  "cars_count": 500,\n  "happy_clients": 5000\n}',
+  };
+
+  if (isLoading && pages.length === 0) {
+    return <div style={{ padding: '2rem' }}><div className="loader" /></div>;
+  }
+
+  return (
+    <>
+      <h2 className="dash-title">
+        <FileText size={22} style={{ verticalAlign: 'middle', color: 'var(--gold)' }} />
+        {' '}Sayt Səhifələri
+      </h2>
+      <p style={{ color: 'var(--tx-2)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+        Public səhifələrin (About, Contact) məzmununu buradan redaktə edə bilərsiniz.
+        Dəyişikliklər dərhal sayta əks olunur.
+      </p>
+
+      {/* Səhifə seçimi tab-ları */}
+      <div style={{
+        display: 'flex',
+        gap: '0.5rem',
+        marginBottom: '1.5rem',
+        flexWrap: 'wrap',
+        borderBottom: '1px solid var(--border)',
+        paddingBottom: '0.5rem',
+      }}>
+        {pages.map((p) => (
+          <button
+            key={p.slug}
+            onClick={() => selectPage(p.slug)}
+            className={`btn btn-sm ${activeSlug === p.slug ? 'btn-primary' : 'btn-ghost'}`}
+          >
+            {SLUG_LABELS[p.slug] || p.slug}
+          </button>
+        ))}
+      </div>
+
+      {/* Redaktə forması */}
+      <div className="dash-card">
+        {/* Başlıq */}
+        <div className="form-group">
+          <label className="form-label">Səhifə başlığı</label>
+          <input
+            className="form-control"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Səhifənin əsas başlığı"
+          />
+        </div>
+
+        {/* Məzmun (HTML) */}
+        <div className="form-group">
+          <label className="form-label">
+            Məzmun (HTML dəstəklənir)
+            <span style={{ color: 'var(--tx-3)', fontWeight: 400, marginLeft: '0.5rem' }}>
+              — &lt;h3&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;strong&gt; istifadə edə bilərsiniz
+            </span>
+          </label>
+          <textarea
+            className="form-control"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={12}
+            style={{
+              fontFamily: 'Menlo, Consolas, monospace',
+              fontSize: '0.85rem',
+              lineHeight: 1.6,
+            }}
+          />
+        </div>
+
+        {/* Meta (JSON) */}
+        <div className="form-group">
+          <label className="form-label">
+            Meta məlumat (JSON)
+            <span style={{ color: 'var(--tx-3)', fontWeight: 400, marginLeft: '0.5rem' }}>
+              — telefon, email, ünvan kimi strukturlaşdırılmış data
+            </span>
+          </label>
+          <textarea
+            className="form-control"
+            value={metaJson}
+            onChange={(e) => setMetaJson(e.target.value)}
+            rows={10}
+            style={{
+              fontFamily: 'Menlo, Consolas, monospace',
+              fontSize: '0.82rem',
+              lineHeight: 1.5,
+              background: '#0a0a18',
+            }}
+            placeholder={META_HINTS[activeSlug] || '{}'}
+          />
+          {META_HINTS[activeSlug] && (
+            <details style={{ marginTop: '0.5rem' }}>
+              <summary style={{ fontSize: '0.78rem', color: 'var(--gold)', cursor: 'pointer' }}>
+                💡 Nümunə format göstər
+              </summary>
+              <pre style={{
+                fontSize: '0.72rem',
+                background: 'var(--bg-3)',
+                padding: '0.8rem',
+                borderRadius: 'var(--r-md)',
+                marginTop: '0.5rem',
+                color: 'var(--tx-2)',
+                overflow: 'auto',
+              }}>{META_HINTS[activeSlug]}</pre>
+            </details>
+          )}
+        </div>
+
+        {/* Saxla düyməsi */}
+        <button
+          className="btn btn-primary"
+          onClick={save}
+          disabled={isSaving}
+        >
+          <Save size={16} />
+          {isSaving ? 'Saxlanır...' : 'Dəyişiklikləri Saxla'}
+        </button>
+
+        {/* Önbax linki */}
+        <a
+          href={`/${activeSlug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-ghost"
+          style={{ marginLeft: '0.5rem' }}
+        >
+          🔗 Səhifəyə bax (yeni tab)
+        </a>
       </div>
     </>
   );

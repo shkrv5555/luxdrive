@@ -98,4 +98,12 @@ export const adminAPI = {
   createPromo: (data)   => client.post('/admin/promo-codes', data),
   togglePromo: (id)     => client.patch(`/admin/promo-codes/${id}/toggle`),
   deletePromo: (id)     => client.delete(`/admin/promo-codes/${id}`),
+  // Sayt səhifələri (About, Contact, ...)
+  listPages:   ()       => client.get('/admin/pages'),
+  updatePage:  (slug, data) => client.put(`/admin/pages/${slug}`, data),
+};
+
+// ── PAGES (PUBLIC) ─────────────────────────────────────────
+export const pagesAPI = {
+  get: (slug) => client.get(`/pages/${slug}`),
 };
