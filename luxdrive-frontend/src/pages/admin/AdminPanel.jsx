@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ChartPie, Users, Building2, Car as CarIcon, Calendar, Star,
   Tag, LogOut, Ban, Trash2, ToggleRight, ToggleLeft, Search,
-  FileText, Save, MessageSquare, Send, Circle,
+  FileText, Save, MessageSquare, Send, Circle, Settings, MapPin, Phone, Mail,
 } from 'lucide-react';
 import { adminAPI, bookingsAPI, reviewsAPI, carsAPI, chatAPI } from '@api/endpoints.js';
 import { getSocket } from '@hooks/useSocket.js';
@@ -36,6 +36,7 @@ export default function AdminPanel() {
     { id: 'promos',    icon: Tag,       label: 'Promo kodları' },
     { id: 'pages',     icon: FileText,  label: 'Səhifələr' },
     { id: 'messages',  icon: MessageSquare, label: 'Mesajlar' },
+    { id: 'settings',  icon: Settings,  label: 'Tənzimləmələr' },
   ];
 
   return (
@@ -71,6 +72,7 @@ export default function AdminPanel() {
         {section === 'promos'    && <PromosSection />}
         {section === 'pages'     && <PagesSection />}
         {section === 'messages'  && <MessagesSection />}
+        {section === 'settings'  && <SettingsSection />}
       </main>
     </div>
   );
@@ -1129,6 +1131,185 @@ function MessagesSection() {
             </>
           )}
         </div>
+      </div>
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// ── TƏNZİMLƏMƏLƏR — Sayt ümumi parametrləri (location, ad, və s.)
+// ═══════════════════════════════════════════════════════════
+function SettingsSection() {
+  const [settings, setSettings] = useState({
+    site_name: 'LuxDrive',
+    site_name_accent: 'Drive',
+    tagline: 'Premium Avtomobil İcarəsi',
+    location_city: 'Bakı',
+    location_country: 'Azərbaycan',
+    location_address: '',
+    location_district: '',
+    support_phone: '',
+    support_email: '',
+    working_hours: '',
+    primary_color: 'gold',
+    currency: '₼',
+    language: 'az',
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // İlk yüklənmədə settings-i çək
+  useEffect(() => {
+    adminAPI.listPages()
+      .then(({ data }) => {
+        const s = data.pages.find((p) => p.slug === 'settings');
+        if (s?.meta) {
+          setSettings((prev) => ({ ...prev, ...s.meta }));
+        }
+      })
+      .catch((err) => toast.error(err?.message || 'Yüklənmədi'))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  // Sahə dəyişdir
+  const update = (key, value) => setSettings((s) => ({ ...s, [key]: value }));
+
+  // Saxla
+  const save = async () => {
+    setIsSaving(true);
+    try {
+      await adminAPI.updatePage('settings', {
+        title: 'Sayt Tənzimləmələri',
+        content: '<!-- Sayt tənzimləmələri saxlanma -->',
+        meta: settings,
+      });
+      toast.success('Tənzimləmələr yadda saxlandı! Saytda dəyişikliklər görünəcək.');
+    } catch (err) {
+      toast.error(err?.message || 'Saxlanmadı');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return <div style={{ padding: '2rem' }}><div className="loader" /></div>;
+  }
+
+  return (
+    <>
+      <h2 className="dash-title">
+        <Settings size={22} style={{ verticalAlign: 'middle', color: 'var(--gold)' }} />
+        {' '}Sayt Tənzimləmələri
+      </h2>
+      <p style={{ color: 'var(--tx-2)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+        Saytın ümumi parametrlərini buradan idarə edin. Dəyişikliklər bütün səhifələrdə dərhal əks olunur.
+      </p>
+
+      {/* ── Brending ────────────────────────────────────── */}
+      <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.8rem', color: 'var(--gold)' }}>
+        🎨 Brending
+      </h3>
+      <div className="dash-card" style={{ marginBottom: '1.5rem' }}>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Sayt adı (1-ci hissə)</label>
+            <input className="form-control" value={settings.site_name}
+              onChange={(e) => update('site_name', e.target.value)} placeholder="Lux" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Sayt adı (2-ci hissə - rəngli)</label>
+            <input className="form-control" value={settings.site_name_accent}
+              onChange={(e) => update('site_name_accent', e.target.value)} placeholder="Drive" />
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Şüar / Tagline</label>
+          <input className="form-control" value={settings.tagline}
+            onChange={(e) => update('tagline', e.target.value)}
+            placeholder="Premium Avtomobil İcarəsi" />
+        </div>
+      </div>
+
+      {/* ── Məkan (Location) ────────────────────────────── */}
+      <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.8rem', color: 'var(--gold)' }}>
+        <MapPin size={16} style={{ verticalAlign: 'middle' }} /> Məkan
+      </h3>
+      <div className="dash-card" style={{ marginBottom: '1.5rem' }}>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Şəhər</label>
+            <input className="form-control" value={settings.location_city}
+              onChange={(e) => update('location_city', e.target.value)} placeholder="Bakı" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Ölkə</label>
+            <input className="form-control" value={settings.location_country}
+              onChange={(e) => update('location_country', e.target.value)} placeholder="Azərbaycan" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Rayon / Bölgə</label>
+            <input className="form-control" value={settings.location_district}
+              onChange={(e) => update('location_district', e.target.value)} placeholder="Nəsimi" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Tam ünvan</label>
+            <input className="form-control" value={settings.location_address}
+              onChange={(e) => update('location_address', e.target.value)}
+              placeholder="Bakı şəhəri, Nəsimi rayonu, küçə..." />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Əlaqə ─────────────────────────────────────── */}
+      <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.8rem', color: 'var(--gold)' }}>
+        <Phone size={16} style={{ verticalAlign: 'middle' }} /> Əlaqə
+      </h3>
+      <div className="dash-card" style={{ marginBottom: '1.5rem' }}>
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Dəstək telefonu</label>
+            <input className="form-control" value={settings.support_phone}
+              onChange={(e) => update('support_phone', e.target.value)}
+              placeholder="+994 50 000 00 00" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Dəstək e-mail</label>
+            <input className="form-control" value={settings.support_email}
+              onChange={(e) => update('support_email', e.target.value)}
+              placeholder="info@luxdrive.az" />
+          </div>
+          <div className="form-group" style={{ gridColumn: '1/-1' }}>
+            <label className="form-label">İş saatları</label>
+            <input className="form-control" value={settings.working_hours}
+              onChange={(e) => update('working_hours', e.target.value)}
+              placeholder="Hər gün 09:00 — 22:00" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Saxla düyməsi ───────────────────────────── */}
+      <button
+        className="btn btn-primary btn-lg"
+        onClick={save}
+        disabled={isSaving}
+        style={{ marginTop: '0.5rem' }}
+      >
+        <Save size={18} />
+        {isSaving ? 'Yadda saxlanır...' : 'Bütün Tənzimləmələri Saxla'}
+      </button>
+
+      <div style={{
+        marginTop: '1.5rem',
+        padding: '1rem 1.2rem',
+        background: 'rgba(212,175,55,0.06)',
+        border: '1px solid var(--border-accent)',
+        borderRadius: 'var(--r-md)',
+        fontSize: '0.82rem',
+        color: 'var(--tx-2)',
+      }}>
+        💡 <strong style={{ color: 'var(--gold)' }}>İpucu:</strong> Dəyişikliklər saxlandıqdan sonra
+        bütün istifadəçilər səhifəni yeniləyəndə yeni məlumatları görəcək.
+        Footer, Contact səhifəsi və başqa yerlərdə bu məlumatlar avtomatik istifadə olunur.
       </div>
     </>
   );

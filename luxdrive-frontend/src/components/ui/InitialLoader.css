@@ -1,0 +1,165 @@
+/* ════════════════════════════════════════════════════════════
+   InitialLoader — Premium giriş animasiyası
+   ════════════════════════════════════════════════════════════ */
+
+.initial-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, var(--bg-2) 0%, var(--bg-0) 70%);
+  overflow: hidden;
+  /* CSS animation əmin olmaq üçün başlangıc state */
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Çıxış (fade-out) animasiyası */
+.initial-loader.exit {
+  animation: loaderExit 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes loaderExit {
+  0%   { opacity: 1; backdrop-filter: blur(0px); }
+  100% { opacity: 0; backdrop-filter: blur(12px); pointer-events: none; transform: scale(1.05); }
+}
+
+/* ── Arxa plan radial glow ─────────────────────────────── */
+.loader-bg-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 600px 400px at 30% 40%, var(--gold-glow), transparent 60%),
+    radial-gradient(ellipse 500px 350px at 70% 60%, var(--purple-glow), transparent 60%);
+  animation: bgGlowPulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes bgGlowPulse {
+  0%   { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 1;   transform: scale(1.1); }
+}
+
+/* ── Tor pattern arxa planda ───────────────────────────── */
+.loader-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(212, 175, 55, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 175, 55, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  animation: gridFloat 6s linear infinite;
+}
+
+@keyframes gridFloat {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(50px, 50px); }
+}
+
+/* ── Mərkəz məzmun ─────────────────────────────────────── */
+.loader-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  /* Slide-up effekt — fade ilə birgə */
+  animation: contentReveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes contentReveal {
+  0%   { opacity: 0; transform: translateY(40px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);   }
+}
+
+/* ── Logo ──────────────────────────────────────────────── */
+.loader-logo {
+  font-family: var(--font-disp);
+  font-size: clamp(3rem, 8vw, 5rem);
+  font-weight: 900;
+  letter-spacing: 4px;
+  line-height: 1;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 80px var(--gold-glow);
+}
+
+.loader-logo .logo-lux {
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+  animation: letterFloat 2s ease-in-out infinite alternate;
+}
+
+.loader-logo .logo-drive {
+  background: linear-gradient(135deg, var(--purple-light), var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+  animation: letterFloat 2s ease-in-out 0.3s infinite alternate;
+}
+
+@keyframes letterFloat {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-6px); }
+}
+
+/* ── Tagline ───────────────────────────────────────────── */
+.loader-tagline {
+  font-size: 0.8rem;
+  color: var(--tx-3);
+  letter-spacing: 6px;
+  font-weight: 600;
+  margin-bottom: 2.5rem;
+  opacity: 0;
+  animation: taglineFade 0.6s ease 0.4s forwards;
+}
+
+@keyframes taglineFade {
+  to { opacity: 1; }
+}
+
+/* ── Progress bar ──────────────────────────────────────── */
+.loader-progress {
+  width: 280px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0 auto;
+  position: relative;
+}
+
+.loader-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--purple-light), var(--cyan));
+  border-radius: 2px;
+  box-shadow: 0 0 10px var(--gold);
+  /* Progress 0% → 100% ərzində 1.4 saniyə */
+  animation: progressFill 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes progressFill {
+  0%   { width: 0%;   }
+  20%  { width: 25%;  }
+  50%  { width: 60%;  }
+  80%  { width: 90%;  }
+  100% { width: 100%; }
+}
+
+/* ── Reduced motion — animasiyaları söndür ─────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .initial-loader,
+  .loader-content,
+  .loader-logo .logo-lux,
+  .loader-logo .logo-drive,
+  .loader-bg-glow,
+  .loader-grid,
+  .loader-progress-fill {
+    animation: none !important;
+  }
+  .initial-loader.exit { opacity: 0; pointer-events: none; }
+}

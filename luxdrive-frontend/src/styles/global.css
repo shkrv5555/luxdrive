@@ -68,6 +68,33 @@
 
 html {
   scroll-behavior: smooth;
+  /* Mətn seçimi rəngi */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Pro effekt: hər kartda yumşaq hover (transform-əsaslı, GPU-paylanmış) */
+.car-card,
+.feature-card,
+.dash-card,
+.stat-card {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease;
+  will-change: transform;
+}
+
+/* Selection rəngi */
+::selection {
+  background: var(--gold);
+  color: var(--bg-0);
+}
+
+/* Focus-visible halqası (klaviatura naviqasiyası üçün) */
+*:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: var(--r-sm);
 }
 
 body {

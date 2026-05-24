@@ -28,6 +28,7 @@ import Navbar from '@components/layout/Navbar.jsx';
 import Footer, { CookieBanner, MobileMenu } from '@components/layout/Footer.jsx';
 import NotificationDropdown from '@components/notifications/NotificationDropdown.jsx';
 import ChatPanel from '@components/chat/ChatPanel.jsx';
+import InitialLoader from '@components/ui/InitialLoader.jsx';
 import AppRouter from '@routes/AppRouter.jsx';
 
 function AppContent() {
@@ -67,6 +68,9 @@ function AppContent() {
 
   return (
     <>
+      {/* Premium giriş splash ekranı — yalnız ilk sessiya açılışında */}
+      <InitialLoader />
+
       {/* Navbar admin səhifəsində gizlədilir (admin öz layout-una sahib) */}
       {!isAdminPage && <Navbar />}
       {!isAdminPage && <NotificationDropdown />}

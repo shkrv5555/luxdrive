@@ -7,7 +7,9 @@ import * as Page from '../models/Page.js';
 import { HttpError } from '../middleware/errorHandler.js';
 
 // İcazə verilən slug-lar (öncədən təyin olunmuş səhifələr)
-const ALLOWED_SLUGS = ['about', 'contact', 'privacy', 'terms'];
+// 'settings' xüsusi slug-dır — sayt ümumi tənzimləmələri saxlayır
+// (site_name, primary_address, logo_text, və s. meta-da)
+const ALLOWED_SLUGS = ['about', 'contact', 'privacy', 'terms', 'settings'];
 
 /**
  * GET /api/pages/:slug
